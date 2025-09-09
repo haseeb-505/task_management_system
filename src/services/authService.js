@@ -2,7 +2,7 @@ import getPool from "../config/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-export const registerUser = async ({ name, role, company, email, password }) => {
+export const register = async ({ name, role, company, email, password }) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const pool = getPool(true);
     const [result] = await pool.query(
@@ -14,7 +14,7 @@ export const registerUser = async ({ name, role, company, email, password }) => 
 };
 
 // login user function
-export const loginUser = async ({ email, password}) => {
+export const login = async ({ email, password}) => {
     const pool = await getPool(true);
     const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
     if (rows.length === 0) throw new Error("User not found");
