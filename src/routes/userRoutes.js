@@ -8,36 +8,28 @@ import {
     getUserById,
     updateUser,
     deleteUser,
-    getManagerDashboard,
-    getAdminDashboard
+    getSuperAdminDashboard,
+    getCompanyUserDashboard,
+    getEndUserDashboard
 } from "../controllers/userController.js";
 import { verifyJWT, authorize } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Public routes (if any)
-// router.route("/public").get(...);
-
-// Protected routes - All authenticated users
+// All authenticated users can access these
 router.route("/current-user").get(verifyJWT, authorize([]), getCurrentUser);
-router.route("/profile").get(verifyJWT, authorize(['user', 'manager', 'admin']), getUserProfile);
-router.route("/profile").patch(verifyJWT, authorize(['user', 'manager', 'admin']), updateUserProfile);
+router.route("/profile").get(verifyJWT, authorize([]), getUserProfile);
+router.route("/profile").patch(verifyJWT, authorize([]), updateUserProfile);
 
-// User role specific routes
-router.route("/dashboard").get(verifyJWT, authorize(['user']), (req, res) => {
-    res.json({ message: "User dashboard data" });
-});
+// Role-specific dashboards
+router.route("/superadmin/dashboard").get(verifyJWT, authorize(['SuperAdmin']), getSuperAdminDashboard);
+router.route("/companyuser/dashboard").get(verifyJWT, authorize(['CompanyUser']), getCompanyUserDashboard);
+router.route("/enduser/dashboard").get(verifyJWT, authorize(['EndUser']), getEndUserDashboard);
 
-// Manager role specific routes
-router.route("/manager/dashboard").get(verifyJWT, authorize(['manager', 'admin']), getManagerDashboard);
-router.route("/manager/users").get(verifyJWT, authorize(['manager', 'admin']), getAllUsers);
-
-// Admin role specific routes
-router.route("/admin/dashboard").get(verifyJWT, authorize(['admin']), getAdminDashboard);
-router.route("/admin/users").get(verifyJWT, authorize(['admin']), getAllUsers);
-router.route("/admin/users/:id")
-    .get(verifyJWT, authorize(['admin']), getUserById)
-    .patch(verifyJWT, authorize(['admin']), updateUser)
-    .delete(verifyJWT, authorize(['admin']), deleteUser);
+// User management routes
+router.route("/get-all-users").get(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), getAllUsers);
+router.route("/get-user/:id").get(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), getUserById)
+router.route("/update-user/:id").patch(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), updateUser)
+router.route("/delete-user/:id").delete(verifyJWT, authorize(['SuperAdmin']), deleteUser); // Only SuperAdmin can delete
 
 export default router;
