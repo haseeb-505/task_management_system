@@ -1,33 +1,47 @@
 import mysql from "mysql2/promise";
 
-let pool;
+let serverPool = null;
+let databasePool = null;
 
-export const getPool = () => {
-    if (!pool) {
-        pool = mysql.createPool({
-            host: process.env.DB_HOST || "localhost",
-            user: process.env.DB_USER || "root",
-            password: process.env.DB_PASS,
-            database: process.env.DB_NAME || "task_manager",
-            waitForConnections: true,
-            connectionLimit: 10,
-        });
+export const getPool = (includeDatabase = false) => {
+    if (includeDatabase) {
+        if (!databasePool) {
+            databasePool = mysql.createPool({
+                host: process.env.DB_HOST || "localhost",
+                user: process.env.DB_USER || "root",
+                password: process.env.DB_PASS,
+                database: process.env.DB_NAME || "task_manager",
+                waitForConnections: true,
+                connectionLimit: 10,
+            });
+        }
+        return databasePool;
+    } else {
+        if (!serverPool) {
+            serverPool = mysql.createPool({
+                host: process.env.DB_HOST || "localhost",
+                user: process.env.DB_USER || "root",
+                password: process.env.DB_PASS,
+                waitForConnections: true,
+                connectionLimit: 10,
+            });
+        }
+        return serverPool;
     }
-    return pool;
 }
 
-// creating a testConnection function to check the dbConnection in app.js or index.js
-export const testConnection = async () => {
-        try {
-           const currentPool = getPool()
-           const connection = await currentPool.getConnection();
-            console.log('Database connected successfully');
-            connection.release();
-            return true;
-        } catch (error) {
-            console.error('Database connection failed:', error.message);
-            return false;
-        }
+// Updated testConnection function
+export const testConnection = async (testDatabase = false) => {
+    try {
+        const currentPool = getPool(testDatabase);
+        const connection = await currentPool.getConnection();
+        console.log(testDatabase ? 'Database connected successfully' : 'Database server connected successfully');
+        connection.release();
+        return true;
+    } catch (error) {
+        console.error('Connection failed:', error.message);
+        return false;
     }
+}
 
 export default getPool;
