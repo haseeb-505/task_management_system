@@ -21,10 +21,13 @@ export const getCurrentUser = async (req, res) => {
 export const getUserProfile = async (req, res) => {
     try {
         const pool = await getPool();
+        // console.log("Request user id is: ", req.user.id);
         const [users] = await pool.execute(
-            "SELECT id, username, email, role, created_at FROM users WHERE id = ?",
-            [req.user.userId]
+            "SELECT id, name, email, role, company, created_on FROM users WHERE id = ?",
+            [req.user.id]
         );
+
+        // console.log("Users are: ", users)
         
         if (users.length === 0) {
             return res.status(404).json({
@@ -49,12 +52,28 @@ export const getUserProfile = async (req, res) => {
 // Update user profile
 export const updateUserProfile = async (req, res) => {
     try {
-        const { username, email } = req.body;
+        const { name, email, company, role } = req.body;
         const pool = await getPool();
-        
+
+        // Check if user is trying to change restricted fields
+        if (company && company !== req.user.company) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot change your company. Contact administrator."
+            });
+        };
+
+        // Check if user is trying to change role
+        if (role && role !== req.user.role) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot change your role. Contact administrator."
+            });
+        }
+
         await pool.execute(
-            "UPDATE users SET username = ?, email = ? WHERE id = ?",
-            [username, email, req.user.userId]
+            "UPDATE users SET name = ?, email = ? WHERE id = ?",
+            [name, email, req.user.id]
         );
 
         res.json({
@@ -69,20 +88,31 @@ export const updateUserProfile = async (req, res) => {
     }
 }
 
-// Get all users (for managers and admins)
+// Get all users (for SuperAdmin and CompanyUser with company filtering)
 export const getAllUsers = async (req, res) => {
     try {
+        // console.log("User in getAllUsers is: ", req.user);
         const pool = await getPool();
-        const [users] = await pool.execute(
-            "SELECT id, username, email, role, created_at FROM users"
-        );
+        let query = "SELECT id, name, email, role, company, created_on FROM users";
+        let params = [];
+        
+        // CompanyUser can only see users from their own company
+        if (req.user.role === 'CompanyUser') {
+            query += " WHERE company = ?";
+            params.push(req.user.company);
+        }
+        // SuperAdmin can see all users
+        // EndUser cannot access this route (handled by authorize middleware)
+
+        const [users] = await pool.execute(query, params);
+
+        // console.log("users are: ", users);
 
         res.json({
             success: true,
             message: "Users retrieved successfully",
             users: users,
-            // Add role-based filtering if needed
-            userRole: req.user.role
+            total: users.length
         });
     } catch (error) {
         res.status(500).json({
@@ -92,21 +122,27 @@ export const getAllUsers = async (req, res) => {
     }
 }
 
-// Get user by ID (admin only)
+// Get user by ID (SuperAdmin only or CompanyUser for same company)
 export const getUserById = async (req, res) => {
     try {
         const { id } = req.params;
         const pool = await getPool();
         
-        const [users] = await pool.execute(
-            "SELECT id, username, email, role, created_at FROM users WHERE id = ?",
-            [id]
-        );
+        let query = "SELECT id, name, email, role, company, created_on FROM users WHERE id = ?";
+        let params = [id];
+        
+        // CompanyUser can only access users from their own company
+        if (req.user.role === 'CompanyUser') {
+            query += " AND company = ?";
+            params.push(req.user.company);
+        }
+
+        const [users] = await pool.execute(query, params);
 
         if (users.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "User not found"
+                message: "User not found or access denied"
             });
         }
 
@@ -123,17 +159,40 @@ export const getUserById = async (req, res) => {
     }
 }
 
-// Update user (admin only)
+// Update user (SuperAdmin only )
 export const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { username, email, role } = req.body;
+        const { name, email, role } = req.body;
+        // console.log("data is: ", req.body);
         const pool = await getPool();
         
-        await pool.execute(
-            "UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?",
-            [username, email, role, id]
-        );
+        let query = "UPDATE users SET name = ?, email = ?";
+        let params = [name, email];
+        
+        // Only SuperAdmin can change roles
+        if (req.user.role === 'SuperAdmin' && role) {
+            query += ", role = ?";
+            params.push(role);
+        }
+        
+        query += " WHERE id = ?";
+        params.push(id);
+        
+        // CompanyUser can only update users from their own company
+        if (req.user.role === 'CompanyUser') {
+            query += " AND company = ?";
+            params.push(req.user.company);
+        }
+
+        const [result] = await pool.execute(query, params);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found or access denied"
+            });
+        }
 
         res.json({
             success: true,
@@ -147,9 +206,10 @@ export const updateUser = async (req, res) => {
     }
 }
 
-// Delete user (admin only)
+// Delete user (SuperAdmin only)
 export const deleteUser = async (req, res) => {
     try {
+
         const { id } = req.params;
         const pool = await getPool();
         
@@ -167,23 +227,33 @@ export const deleteUser = async (req, res) => {
     }
 }
 
-// Manager dashboard
-export const getManagerDashboard = async (req, res) => {
+// SuperAdmin dashboard
+export const getSuperAdminDashboard = async (req, res) => {
     try {
         const pool = await getPool();
         
-        // Example manager-specific data
         const [userStats] = await pool.execute(
-            "SELECT role, COUNT(*) as count FROM users WHERE role IN ('user', 'manager') GROUP BY role"
+            "SELECT role, COUNT(*) as count FROM users GROUP BY role"
+        );
+
+        const [recentUsers] = await pool.execute(
+            "SELECT id, name, email, role, company, created_on FROM users ORDER BY created_on DESC LIMIT 5"
+        );
+
+        const [companyStats] = await pool.execute(
+            "SELECT company, COUNT(*) as user_count FROM users GROUP BY company"
         );
 
         res.json({
             success: true,
-            message: "Manager dashboard data",
+            message: "SuperAdmin dashboard data",
             userStats: userStats,
-            managerData: {
+            recentUsers: recentUsers,
+            companyStats: companyStats,
+            dashboardData: {
                 totalUsers: userStats.reduce((acc, curr) => acc + curr.count, 0),
-                welcomeMessage: `Welcome Manager ${req.user.username}`
+                totalCompanies: companyStats.length,
+                welcomeMessage: `Welcome SuperAdmin ${req.user.name}`
             }
         });
     } catch (error) {
@@ -194,28 +264,58 @@ export const getManagerDashboard = async (req, res) => {
     }
 }
 
-// Admin dashboard
-export const getAdminDashboard = async (req, res) => {
+// CompanyUser dashboard
+export const getCompanyUserDashboard = async (req, res) => {
     try {
         const pool = await getPool();
         
-        // Example admin-specific data
         const [userStats] = await pool.execute(
-            "SELECT role, COUNT(*) as count FROM users GROUP BY role"
+            "SELECT role, COUNT(*) as count FROM users WHERE company = ? GROUP BY role",
+            [req.user.company]
         );
 
         const [recentUsers] = await pool.execute(
-            "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5"
+            "SELECT id, name, email, role, created_on FROM users WHERE company = ? ORDER BY created_on DESC LIMIT 5",
+            [req.user.company]
         );
 
         res.json({
             success: true,
-            message: "Admin dashboard data",
+            message: "CompanyUser dashboard data",
             userStats: userStats,
             recentUsers: recentUsers,
-            adminData: {
+            dashboardData: {
                 totalUsers: userStats.reduce((acc, curr) => acc + curr.count, 0),
-                welcomeMessage: `Welcome Admin ${req.user.username}`
+                company: req.user.company,
+                welcomeMessage: `Welcome CompanyUser ${req.user.name}`
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Server error"
+        });
+    }
+}
+
+// EndUser dashboard
+export const getEndUserDashboard = async (req, res) => {
+    try {
+        const pool = await getPool();
+        
+        // Get user's tasks count (you'll need to implement tasks table)
+        const [taskStats] = await pool.execute(
+            "SELECT status, COUNT(*) as count FROM tasks WHERE user_id = ? GROUP BY status",
+            [req.user.id]
+        );
+
+        res.json({
+            success: true,
+            message: "EndUser dashboard data",
+            taskStats: taskStats,
+            dashboardData: {
+                totalTasks: taskStats.reduce((acc, curr) => acc + curr.count, 0),
+                welcomeMessage: `Welcome ${req.user.name}`
             }
         });
     } catch (error) {
