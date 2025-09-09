@@ -1,7 +1,7 @@
 CREATE DATABASE IF NOT EXISTS task_manager;
 USE task_manager;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   role ENUM('SuperAdmin','CompanyUser','EndUser') NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE users (
   created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
   description TEXT,
@@ -24,7 +24,7 @@ CREATE TABLE tasks (
   FOREIGN KEY (assigned_to) REFERENCES users(id)
 );
 
-CREATE TABLE task_files (
+CREATE TABLE IF NOT EXISTS task_files (
   id INT AUTO_INCREMENT PRIMARY KEY,
   task_id INT,
   file_path VARCHAR(255),
