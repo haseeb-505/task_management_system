@@ -19,7 +19,7 @@ const router = express.Router();
 router.post("/create-task", verifyJWT, authorize(['SuperAdmin', 'CompanyUser', 'EndUser']), createTask);
 router.get("/get-tasks", verifyJWT, authorize([]), getTasks);
 router.get("/get-task/:id", verifyJWT, authorize([]), getTaskById);
-router.put("/update-task/:id", verifyJWT, authorize([]), updateTask);
+router.patch("/update-task/:id", verifyJWT, authorize([]), updateTask);
 router.delete("/delete-task/:id", verifyJWT, authorize([]), deleteTask);
 
 // File upload route - mark task as completed
