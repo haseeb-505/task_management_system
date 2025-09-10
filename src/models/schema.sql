@@ -18,16 +18,21 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date DATE,
   status ENUM('Pending','InProgress','Completed') DEFAULT 'Pending',
   created_by INT,
-  assigned_to INT,
   created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  assigned_to INT DEFAULT NULL,
+  assigned_on TIMESTAMP NULL,
+  completed_on TIMESTAMP NULL,
   FOREIGN KEY (created_by) REFERENCES users(id),
   FOREIGN KEY (assigned_to) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS task_files (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  task_id INT,
-  file_path VARCHAR(255),
-  uploaded_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (task_id) REFERENCES tasks(id)
+  task_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  uploaded_by INT NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
 );
