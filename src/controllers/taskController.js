@@ -1,4 +1,6 @@
 import getPool from "../config/db.js";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
+
 
 // create a new task
 export const createTask = async (req, res) => {
@@ -138,103 +140,189 @@ export const getTaskById = async (req, res) => {
 
 // Update task
 export const updateTask = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { title, description, due_date, status, assigned_to } = req.body;
-        const { role, userId } = req.user;
+  try {
+    const { id } = req.params;
+    const { title, description, due_date, status } = req.body;
+    const { role, userId } = req.user;
 
-        const pool = await getPool();
+    const pool = await getPool();
 
-        // Check if user has permission to update this task
-        let accessQuery = "SELECT created_by, assigned_to FROM tasks WHERE id = ?";
-        const [task] = await pool.query(accessQuery, [id]);
+    const [taskRows] = await pool.query(
+      "SELECT created_by, status, assigned_to FROM tasks WHERE id = ?",
+      [id]
+    );
 
-        if (task.length === 0) {
-            return res.status(404).json({ success: false, message: "Task not found" });
-        }
-
-        const taskData = task[0];
-        
-        // EndUser can only update their own tasks
-        if (role === "EndUser" && taskData.created_by !== userId && taskData.assigned_to !== userId) {
-            return res.status(403).json({ success: false, message: "Access denied" });
-        }
-
-        // Build update query dynamically
-        let updateQuery = "UPDATE tasks SET ";
-        const updateValues = [];
-        const updates = [];
-
-        if (title) { updates.push("title = ?"); updateValues.push(title); }
-        if (description) { updates.push("description = ?"); updateValues.push(description); }
-        if (due_date) { updates.push("due_date = ?"); updateValues.push(due_date); }
-        if (status) { updates.push("status = ?"); updateValues.push(status); }
-        if (assigned_to && (role === "SuperAdmin" || role === "CompanyUser")) { 
-            updates.push("assigned_to = ?"); 
-            updateValues.push(assigned_to); 
-        }
-
-        if (updates.length === 0) {
-            return res.status(400).json({ success: false, message: "No fields to update" });
-        }
-
-        updateQuery += updates.join(", ") + " WHERE id = ?";
-        updateValues.push(id);
-
-        await pool.query(updateQuery, updateValues);
-
-        return res.status(200).json({
-            success: true,
-            message: "Task updated successfully"
-        });
-
-    } catch (error) {
-        console.log("Error updating task: ", error);
-        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    if (taskRows.length === 0) {
+      return res.status(404).json({ success: false, message: "Task not found" });
     }
+
+    const task = taskRows[0];
+    // check if task is already completed, end user cannot update a completed task 
+    if (role === "EndUser" && task.status === 'Completed') {
+        return res.status(400).json({ success: false, message: "Cannot update a completed task"}) 
+    }
+
+    if (role === "EndUser") {
+      if (task.created_by !== userId && task.assigned_to !== userId) {
+        return res.status(403).json({ success: false, message: "Access denied" });
+      }
+
+      const updates = [];
+      const values = [];
+
+      if (title) { updates.push("title = ?"); values.push(title); }
+      if (description) { updates.push("description = ?"); values.push(description); }
+      if (due_date) { updates.push("due_date = ?"); values.push(due_date); }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ success: false, message: "No allowed fields to update" });
+      }
+
+      const query = `UPDATE tasks SET ${updates.join(", ")} WHERE id = ?`;
+      values.push(id);
+
+      await pool.query(query, values);
+      return res.status(200).json({ success: true, message: "Task updated successfully" });
+    }
+
+    if (role === "CompanyUser") {
+      return res.status(403).json({ success: false, message: "Company users cannot update tasks" });
+    }
+
+    if (role === "SuperAdmin") {
+      if (!status) {
+        return res.status(400).json({ success: false, message: "Only status can be updated by SuperAdmin" });
+      }
+
+      const [files] = await pool.query(
+        "SELECT id FROM task_files WHERE task_id = ? LIMIT 1",
+        [id]
+      );
+
+      if (files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot update status: no files uploaded for this task",
+        });
+      }
+
+      await pool.query(
+                `UPDATE tasks 
+                SET status = ?, 
+                    completed_on = CASE 
+                                        WHEN ? = 'Completed' THEN NOW() 
+                                        ELSE NULL 
+                                    END 
+                WHERE id = ?`,
+                [status, status, id]
+            );
+      return res.status(200).json({ success: true, message: "Task status updated successfully" });
+    }
+
+    return res.status(403).json({ success: false, message: "Access denied" });
+  } catch (error) {
+    console.error("Error updating task:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
 };
+
 
 // Upload files to mark task as completed
 export const uploadTaskFiles = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user.userId;
+  try {
+    const { id } = req.params; // task id
+    const userId = req.user.id; // or req.user.userId depending on your JWT payload
 
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ success: false, message: "No files uploaded" });
-        }
-
-        const pool = await getPool();
-
-        // Update task status to completed when files are uploaded
-        await pool.query(
-            "UPDATE tasks SET status = 'Completed' WHERE id = ?",
-            [id]
-        );
-
-        // Save file references to database
-        const filePromises = req.files.map(file => {
-            return pool.query(
-                "INSERT INTO task_files (task_id, filename, file_path, uploaded_by) VALUES (?, ?, ?, ?)",
-                [id, file.originalname, file.path, userId]
-            );
-        });
-
-        await Promise.all(filePromises);
-
-        return res.status(200).json({
-            success: true,
-            message: "Files uploaded successfully and task marked as completed",
-            files: req.files.map(file => ({
-                filename: file.originalname,
-                path: file.path
-            }))
-        });
-
-    } catch (error) {
-        console.log("Error uploading files: ", error);
-        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    // if user is endUser, cann't upload the file for task completion
+    if (req.user.role === "EndUser") {
+        return res.status(403).json({ success: false, message: "End users cannot upload files to mark the task as compeleted."})
     }
+
+    // check if task exists or not
+
+    const pool = await getPool();
+
+    const [task] = await pool.query("SELECT id FROM tasks WHERE id = ?", [id]);
+    if (task.length === 0) {
+        return res.status(404).json({ success: false, message: "Task not found" });
+    }
+
+    // we need to check if task is assigned to someone or not
+    const [taskAssignedTo] = await pool.query("SELECT assigned_to FROM tasks WHERE id = ?", [id]);
+    if (taskAssignedTo.length === 0 || taskAssignedTo[0].assigned_to === null) {
+        return res.status(400).json({ success: false, message: "Task is not assigned to anyone yet. Cannot mark as completed."})
+    }
+
+    // check if task is already completed
+    const [taskStatus] = await pool.query("SELECT status FROM tasks WHERE id = ?", [id]);
+    // console.log("Task status is: ", taskStatus)
+    if (taskStatus.length > 0 && taskStatus[0].status === 'Completed') {
+        return res.status(400).json({ success: false, message: "Task is already marked as completed."})
+        
+    }
+    
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
+    }
+
+    const uploadedFiles = [];
+
+    try {
+        // Upload each file to Cloudinary and save record in DB
+        for (const file of req.files) {
+            // console.log("object file is: ", file);
+            // console.log("\n\nfile path is: ", file.path);
+          const response = await uploadToCloudinary(file.path); // uploads & deletes local file
+          
+        //   console.log("Response from Cloudinary:", response);
+    
+          if (response !== undefined && response !== null) {
+
+
+
+            await pool.query(
+              "INSERT INTO task_files (task_id, filename, file_path, uploaded_by) VALUES (?, ?, ?, ?)",
+              [id, file.originalname, response.secure_url, userId]
+            );
+
+            // now update the task status to completed and completed_on values
+            await pool.query(
+                "UPDATE tasks SET status = 'Completed', completed_on = NOW() WHERE id = ?", [id]
+            );
+    
+            uploadedFiles.push({
+              filename: file.originalname,
+              url: response.secure_url,
+            });
+
+            // console.log("Uploaded files are: ", uploadedFiles)
+
+            return res.status(200).json({
+                    success: true,
+                    message: "Files uploaded to Cloudinary and task marked as completed",
+                    files: uploadedFiles,
+                });
+          }
+        }
+    
+    } catch (error) {
+        console.log("Upload to Cloudinary failed: ", error);
+        return res.status(500).json({
+          success: false,
+          message: error.message || "File upload failed",
+        });
+    }
+  } catch (error) {
+    console.error("Error uploading task files:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
 };
 
 // Delete task
