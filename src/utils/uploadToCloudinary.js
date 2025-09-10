@@ -10,16 +10,20 @@ cloudinary.config({
 const uploadToCloudinary = async (localFilePath) => {
     try {
         if (!localFilePath) return null;
+        // console.log("File path received in uploadToCloudinary:", localFilePath);
         // upload the file to cloudinary
        const response = await cloudinary.uploader.upload(localFilePath,{
             resource_type: "auto"
         })
+
+        // console.log("response from cloudinary: ", response);
+
         // file has been uploaded successfully
         // console.log("File uploaded successfully on cloudinary !!", response.url);
         fs.unlinkSync(localFilePath); // remove the locally saved temp file
         return response; 
         // Note:
-        // returning only the url, not the image itself
+        // returning the complete response so that url can be extracted later, not the image itself
     } catch (error) {
         fs.unlinkSync(localFilePath); // remove the locally saved temp file as upload failed
     }
