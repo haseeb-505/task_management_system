@@ -55,6 +55,14 @@ export const updateUserProfile = async (req, res) => {
         const { name, email, company, role } = req.body;
         const pool = await getPool();
 
+        // check if user is trying to update his own profile or others
+        if (req.user.id !== parseInt(req.params.id)) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only update your own profile"
+            });
+        };
+
         // Check if user is trying to change restricted fields
         if (company && company !== req.user.company) {
             return res.status(403).json({
@@ -305,7 +313,7 @@ export const getEndUserDashboard = async (req, res) => {
         
         // Get user's tasks count (you'll need to implement tasks table)
         const [taskStats] = await pool.execute(
-            "SELECT status, COUNT(*) as count FROM tasks WHERE user_id = ? GROUP BY status",
+            "SELECT status, COUNT(*) as count FROM tasks WHERE id = ? GROUP BY status",
             [req.user.id]
         );
 
