@@ -311,7 +311,7 @@ export const getEndUserDashboard = async (req, res) => {
     try {
         const pool = await getPool();
         
-        // Get user's tasks count (you'll need to implement tasks table)
+        // Get user's tasks count 
         const [taskStats] = await pool.execute(
             "SELECT status, COUNT(*) as count FROM tasks WHERE id = ? GROUP BY status",
             [req.user.id]
