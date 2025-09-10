@@ -15,7 +15,7 @@ export const getCurrentUser = async (req, res) => {
             message: error.message || "Server error" 
         });
     }
-}
+};
 
 // Get user profile
 export const getUserProfile = async (req, res) => {
