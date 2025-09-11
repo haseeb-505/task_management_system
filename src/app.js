@@ -22,8 +22,7 @@ app.use(cookierParser());
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
-
-
+// import { errorHandler } from './middlewares/errorMiddleware.js';
 
 app.get('/', (req, res) => {
 res.send('Hello, Express!');
@@ -33,4 +32,6 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/tasks", taskRoutes);
 
+// Error handling middleware
+// app.use(errorHandler);
 export {app}
