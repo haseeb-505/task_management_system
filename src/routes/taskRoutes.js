@@ -4,7 +4,7 @@ import {
     getTasks,
     getMyCreatedTasks, 
     getTaskById, 
-    updateTask, 
+    updateTaskById, 
     deleteTask, 
     uploadTaskFiles,
     getUnassignedTasks,
@@ -23,7 +23,7 @@ router.post("/create-task", verifyJWT, authorize(['SuperAdmin', 'CompanyUser', '
 router.get("/get-tasks", verifyJWT, authorize([]), getTasks);
 router.get("/get-my-created-tasks", verifyJWT, authorize([]), getMyCreatedTasks);
 router.get("/get-task/:id", verifyJWT, authorize([]), getTaskById);
-router.patch("/update-task/:id", verifyJWT, authorize([]), updateTask);
+router.patch("/update-task/:id", verifyJWT, authorize([]), updateTaskById);
 router.delete("/delete-task/:id", verifyJWT, authorize([]), deleteTask);
 
 // File upload route - mark task as completed
@@ -39,6 +39,6 @@ router.get('/task-assignment/unassigned', verifyJWT, authorize(['SuperAdmin']), 
 router.get('/task-assignment/pending', verifyJWT, authorize([]), getPendingTasks);
 router.get('/task-assignment/completed', verifyJWT, authorize([]), getCompletedTasks);
 router.get('/task-assignment/company-users', verifyJWT, authorize(['SuperAdmin']), getCompanyUsers);
-router.patch('/task-assignment/:taskId/assign', verifyJWT, authorize(['SuperAdmin']), assignTask);
+router.patch('/task-assignment/:id/assign', verifyJWT, authorize(['SuperAdmin']), assignTask);
 
 export default router;
