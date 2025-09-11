@@ -7,9 +7,11 @@ import {
     updateTask, 
     deleteTask, 
     uploadTaskFiles,
-    assignTask, 
-    getUnassignedTasks, 
-    getCompanyUsers
+    getUnassignedTasks,
+    getPendingTasks,
+    getCompletedTasks, 
+    getCompanyUsers,
+    assignTask
 } from "../controllers/taskController.js";
 import { verifyJWT, authorize } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/multerMiddleware.js";
@@ -34,6 +36,8 @@ router.post("/complete-task/:id/upload",
 
 // Super Admin only routes for task assignment
 router.get('/task-assignment/unassigned', verifyJWT, authorize(['SuperAdmin']), getUnassignedTasks);
+router.get('/task-assignment/pending', verifyJWT, authorize([]), getPendingTasks);
+router.get('/task-assignment/completed', verifyJWT, authorize([]), getCompletedTasks);
 router.get('/task-assignment/company-users', verifyJWT, authorize(['SuperAdmin']), getCompanyUsers);
 router.patch('/task-assignment/:taskId/assign', verifyJWT, authorize(['SuperAdmin']), assignTask);
 
