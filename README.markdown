@@ -57,6 +57,11 @@ Before running the project, ensure the following are installed:
    # JWT Configuration
    JWT_SECRET=your_super_secret_jwt_key_here
 
+   # Cloudinary Configuration (in this project, we used cloudinary along with multer to handle the file uploading)
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
    # File Upload Configuration
    UPLOAD_PATH=./uploads
    MAX_FILE_SIZE=10485760
