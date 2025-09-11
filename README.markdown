@@ -7,6 +7,12 @@ A comprehensive task management system with role-based access control, file atta
 - `npm run dev` - Start in development mode with nodemon
 - `npm run seed` - Run the database seeding script
 
+## Postman Api Endpoint Testing
+Here is the link to postman folder which contains the request to test these api endpoints. 
+```
+[task_management_backend_postman_testing](https://web.postman.co/workspace/Backend-Node-API-testing~79c5c830-8e6a-452f-ac52-344dcf2336b9/collection/37379793-d55a7973-4516-486e-87e8-30619ba443c6?action=share&source=copy-link&creator=37379793)
+```
+
 ## Features
 - 🔐 **Role-Based Access Control**: Supports `SuperAdmin`, `CompanyUser`, and `EndUser` roles with distinct permissions.
 - 🏢 **Company Isolation**: Ensures data separation between different companies.
