@@ -6,11 +6,11 @@ import {
     updateUserProfile,
     getAllUsers,
     getUserById,
-    updateUser,
     deleteUser,
     getSuperAdminDashboard,
     getCompanyUserDashboard,
-    getEndUserDashboard
+    getEndUserDashboard,
+    updateUserById
 } from "../controllers/userController.js";
 import { verifyJWT, authorize } from "../middlewares/authMiddleware.js";
 
@@ -29,7 +29,7 @@ router.route("/enduser/dashboard").get(verifyJWT, authorize(['EndUser']), getEnd
 // User management routes
 router.route("/get-all-users").get(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), getAllUsers);
 router.route("/get-user/:id").get(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), getUserById)
-router.route("/update-user/:id").patch(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), updateUser)
+router.route("/update-user/:id").patch(verifyJWT, authorize(['SuperAdmin', 'CompanyUser']), updateUserById)
 router.route("/delete-user/:id").delete(verifyJWT, authorize(['SuperAdmin']), deleteUser); // Only SuperAdmin can delete
 
 export default router;
