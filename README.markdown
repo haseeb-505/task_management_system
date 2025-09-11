@@ -67,7 +67,7 @@ Before running the project, ensure the following are installed:
    UPLOAD_PATH=./uploads
    MAX_FILE_SIZE=10485760
    ```
-   Replace `your_mysql_password` with your MySQL password and `your_super_secret_jwt_key_here` with a strong JWT secret.
+   Replace `your_mysql_password` with your MySQL password and `your_super_secret_jwt_key_here` with a strong JWT secret. Also replace all other environment variables to run the project smoothly.
 
 4. **Database Setup**:
 
@@ -121,24 +121,47 @@ All endpoints (except login) require JWT authentication in the request header:
 Authorization: Bearer <your_jwt_token>
 ```
 
-### Available Endpoints
-- **Authentication**:
-  - `POST /api/auth/login` - User login
-  - `POST /api/auth/register` - User registration (SuperAdmin only)
-- **Task Assignment (SuperAdmin Only)**:
-  - `GET /api/task-assignment/unassigned` - Get all unassigned tasks
-  - `GET /api/task-assignment/company-users` - Get all company users
-  - `PATCH /api/task-assignment/:taskId/assign` - Assign task to a user
-- **Tasks**:
-  - `GET /api/tasks` - Get all tasks (filtered by user role)
-  - `POST /api/tasks` - Create a new task
-  - `GET /api/tasks/:id` - Get a specific task
-  - `PUT /api/tasks/:id` - Update a task
-  - `DELETE /api/tasks/:id` - Delete a task
-- **Files**:
-  - `POST /api/tasks/:id/files` - Upload a file to a task
-  - `GET /api/tasks/:id/files` - Get files for a task
-  - `DELETE /api/files/:id` - Delete a file
+## 📡 API Endpoints
+
+### 🔐 Authentication (`/api/v1/auth`)
+- `POST /register` → Register a new user
+- `POST /login` → User login
+
+---
+
+### 👤 Users (`/api/v1/users`)
+- `GET /current-user` → Get currently logged-in user
+- `GET /profile` → Get user profile
+- `PATCH /profile` → Update user profile
+
+#### Dashboards (Role-Specific)
+- `GET /superadmin/dashboard` → SuperAdmin dashboard
+- `GET /companyuser/dashboard` → CompanyUser dashboard
+- `GET /enduser/dashboard` → EndUser dashboard
+
+#### User Management
+- `GET /get-all-users` → Get all users (SuperAdmin & CompanyUser only)
+- `GET /get-user/:id` → Get a specific user (SuperAdmin & CompanyUser only)
+- `PATCH /update-user/:id` → Update a user (SuperAdmin & CompanyUser only)
+- `DELETE /delete-user/:id` → Delete a user (SuperAdmin only)
+
+---
+
+### 📋 Tasks (`/api/v1/tasks`)
+- `POST /create-task` → Create a task
+- `GET /get-tasks` → Get all tasks (role-based filtering)
+- `GET /get-task/:id` → Get a specific task
+- `PATCH /update-task/:id` → Update a task
+- `DELETE /delete-task/:id` → Delete a task
+
+#### File Upload (Mark as Completed)
+- `POST /complete-task/:id/upload` → Upload files (max 5) and mark task as completed
+
+#### Task Assignment (SuperAdmin Only)
+- `GET /task-assignment/unassigned` → Get all unassigned tasks
+- `GET /task-assignment/company-users` → Get all company users
+- `PATCH /task-assignment/:taskId/assign` → Assign a task to a user
+
 
 ## Role Permissions
 - **SuperAdmin**:
