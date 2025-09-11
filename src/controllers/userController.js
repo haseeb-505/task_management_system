@@ -51,50 +51,91 @@ export const getUserProfile = async (req, res) => {
 
 // Update user profile
 export const updateUserProfile = async (req, res) => {
-    try {
-        const { name, email, company, role } = req.body;
-        const pool = await getPool();
+  try {
+    const { name, email, company, role } = req.body;
+    const pool = await getPool();
 
-        // check if user is trying to update his own profile or others
-        if (req.user.id !== parseInt(req.params.id)) {
-            return res.status(403).json({
-                success: false,
-                message: "You can only update your own profile"
-            });
-        };
+    // Get the current logged-in user from DB
+    const [users] = await pool.execute(
+      "SELECT id, name, email, role, company FROM users WHERE id = ?",
+      [req.user.id]
+    );
 
-        // Check if user is trying to change restricted fields
-        if (company && company !== req.user.company) {
-            return res.status(403).json({
-                success: false,
-                message: "You cannot change your company. Contact administrator."
-            });
-        };
-
-        // Check if user is trying to change role
-        if (role && role !== req.user.role) {
-            return res.status(403).json({
-                success: false,
-                message: "You cannot change your role. Contact administrator."
-            });
-        }
-
-        await pool.execute(
-            "UPDATE users SET name = ?, email = ? WHERE id = ?",
-            [name, email, req.user.id]
-        );
-
-        res.json({
-            success: true,
-            message: "Profile updated successfully"
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || "Server error"
-        });
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
-}
+
+    const currentUser = users[0];
+
+    // Make sure user is updating their own profile
+    if (req.user.id !== currentUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update your own profile"
+      });
+    }
+
+    // Restrict company and role updates
+    const restrictions = {
+      company: "You cannot change your company. Contact administrator.",
+      role: "You cannot change your role. Contact administrator."
+    };
+
+    for (const field in restrictions) {
+      if (req.body[field] && req.body[field] !== req.user[field]) {
+        return res.status(403).json({
+          success: false,
+          message: restrictions[field]
+        });
+      }
+    }
+
+    // Only allow updating name and email
+    if ((!name || name.trim() === "") || (!email || email.trim() === "")) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and email cannot be empty"
+      });
+    }
+
+    // Check if email is already taken by another user
+    if (email !== currentUser.email) {
+      const [existing] = await pool.execute(
+        "SELECT id FROM users WHERE email = ? AND id != ?",
+        [email, req.user.id]
+      );
+
+      if (existing.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "This email is already in use by another account"
+        });
+      }
+    }
+
+    // Update user profile
+    await pool.execute(
+      "UPDATE users SET name = ?, email = ? WHERE id = ?",
+      [name, email, req.user.id]
+    );
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully"
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error"
+    });
+  }
+};
+
+
 
 // Get all users (for SuperAdmin and CompanyUser with company filtering)
 export const getAllUsers = async (req, res) => {
@@ -168,32 +209,73 @@ export const getUserById = async (req, res) => {
 }
 
 // Update user (SuperAdmin only )
-export const updateUser = async (req, res) => {
+export const updateUserById = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, role } = req.body;
         // console.log("data is: ", req.body);
         const pool = await getPool();
+
+        // first of all, we need to check if user with this id exists
+        //2ndly, we check if this email is already taken or not
+        try {
+            const [ users ] = await pool.execute(
+                "SELECT id, email, role, company FROM users WHERE id = ?",
+                [id]
+            );
+            if (users.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                })
+            };
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || "server error while checking the user existence in updateUserById"
+            })
+        };
+
+        // check if email is already taken by another user
+        try {
+            if (email && email.trim() !== "") {
+                const [ users ] = await pool.execute(
+                    "SELECT id, email, role, company FROM users WHERE email = ?",
+                    [email]
+                );
+                if (users.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "This email is already taken by another user."
+                    })
+                };
+            }
+        } catch (error) {
+            return res.status(500).json({
+                success: false,
+                message: error.message || "server error while checking the email availability in updateUserById"
+            })
+        };
         
         let query = "UPDATE users SET name = ?, email = ?";
-        let params = [name, email];
+        let updatingUserDetails = [name, email];
         
         // Only SuperAdmin can change roles
         if (req.user.role === 'SuperAdmin' && role) {
             query += ", role = ?";
-            params.push(role);
+            updatingUserDetails.push(role);
         }
         
         query += " WHERE id = ?";
-        params.push(id);
-        
+        updatingUserDetails.push(id);
+
         // CompanyUser can only update users from their own company
         if (req.user.role === 'CompanyUser') {
             query += " AND company = ?";
-            params.push(req.user.company);
+            updatingUserDetails.push(req.user.company);
         }
 
-        const [result] = await pool.execute(query, params);
+        const [result] = await pool.execute(query, updatingUserDetails);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
@@ -212,7 +294,7 @@ export const updateUser = async (req, res) => {
             message: error.message || "Server error"
         });
     }
-}
+};
 
 // Delete user (SuperAdmin only)
 export const deleteUser = async (req, res) => {
