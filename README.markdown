@@ -2,6 +2,11 @@
 
 A comprehensive task management system with role-based access control, file attachments, and company-specific data isolation.
 
+## Scripts to Run this Project
+- `npm start` - Start the server in production mode
+- `npm run dev` - Start in development mode with nodemon
+- `npm run seed` - Run the database seeding script
+
 ## Features
 - 🔐 **Role-Based Access Control**: Supports `SuperAdmin`, `CompanyUser`, and `EndUser` roles with distinct permissions.
 - 🏢 **Company Isolation**: Ensures data separation between different companies.
