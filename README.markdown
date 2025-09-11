@@ -6,6 +6,7 @@ A comprehensive task management system with role-based access control, file atta
 - `npm start` - Start the server in production mode
 - `npm run dev` - Start in development mode with nodemon
 - `npm run seed` - Run the database seeding script
+- The server will start on `http://localhost:3000`
 
 ## Postman Api Endpoint Testing
 Here is the link to postman folder which contains the request to test these api endpoints. 
@@ -77,7 +78,8 @@ Before running the project, ensure the following are installed:
      Connection pooling is configured in `config/db.js`.  
 
    - **Initialization**:  
-     To initialize the database and create required tables, run:  
+     Database is automatically initialized when we run the `dev` or `start` command.
+     To initialize the database and create required tables manuaully for some reason, run:  
      ```bash
      node src/config/initDB.js
      ```
