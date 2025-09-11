@@ -6,7 +6,7 @@ import { uploadToCloudinary } from "../utils/uploadToCloudinary.js";
 export const createTask = async (req, res) => {
     try {
         const { title, description, due_date } = req.body;
-        const { userId } = req.user?.id;
+        const userId = req.user.id;
 
         const pool = await getPool();
 
@@ -14,6 +14,17 @@ export const createTask = async (req, res) => {
             "INSERT INTO tasks (title, description, due_date, created_by) VALUES (?, ?, ?, ?)",
             [title, description, due_date, userId]
         );
+
+        const [tasks] = await pool.execute(
+            "SELECT * FROM tasks WHERE id = ?",
+            [result.insertId]
+        );
+
+        if (tasks.length === 0) {
+            return res.status(500).json({ success: false, message: "Failed to retrieve created task" });
+        }
+
+        const { created_by } = tasks[0];
 
         return res.status(201).json({
             success: true,
@@ -23,7 +34,7 @@ export const createTask = async (req, res) => {
                 title,
                 description,
                 due_date,
-                created_by: userId
+                created_by,
             }
         });
     } catch (error) {
@@ -84,6 +95,33 @@ export const getTasks = async (req, res) => {
             message: "Internal Server Error" 
         });
     }
+};
+
+// get all the tasks created by the logged in user
+export const getMyCreatedTasks = async (req, res) => {
+    try {
+        const userId = req.user.id; 
+        const pool = await getPool();
+
+        const tasks = await pool.execute(
+            "SELECT * FROM tasks WHERE created_by = ? ORDER BY created_on DESC",
+            [userId]
+        );
+        if (tasks.length === 0) {
+            return res.status(404).json({success: false, message: "No tasks created by you found"});
+        };
+
+        return res.status(200).json({
+            success: true,
+            message: "Tasks retrieved successfully",
+            data: tasks[0],
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Internal Server Error While fetching your created tasks."
+        });
+    };
 };
 
 // Get single task
