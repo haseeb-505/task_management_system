@@ -190,8 +190,8 @@ export const getTaskById = async (req, res) => {
   }
 };
 
-// Update task
-export const updateTask = async (req, res) => {
+// Update task by id
+export const updateTaskById = async (req, res) => {
   try {
     const { id: taskId } = req.params;
     const { title, description, due_date, status } = req.body;
