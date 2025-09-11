@@ -50,7 +50,8 @@ export const createTask = async (req, res) => {
 
 export const getTasks = async (req, res) => {
     try {
-        const { role, company, userId } = req.user; // Use userId instead of id
+        const { role, company, id } = req.user; // Use userId instead of id
+        console.log("UserId is: ", id);
         const pool = await getPool();
 
         let query = `
@@ -66,7 +67,7 @@ export const getTasks = async (req, res) => {
         // role based access control
         if (role === "EndUser") {
             query += " WHERE t.created_by = ?";
-            values.push(userId);
+            values.push(id);
         } else if (role === "CompanyUser") {
             query += " WHERE t.assigned_to IN (SELECT id FROM users WHERE company = ?)";
             values.push(company);
@@ -416,6 +417,114 @@ export const getUnassignedTasks = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching unassigned tasks:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// get all the pending tasks
+export const getPendingTasks = async (req, res) => {
+    try {
+        const { role, id } = req.user;
+        const pool = await getPool();
+
+        if (role === 'SuperAdmin') {
+            const [tasks] = await pool.execute(`
+                SELECT t.*, u.name as created_by_name, u.company as created_by_company
+                FROM tasks t
+                JOIN users u ON t.created_by = u.id
+                WHERE (t.status = 'Pending' OR t.status = 'InProgress')
+                ORDER BY t.created_on DESC
+            `);
+
+            return res.json({
+                success: true,
+                message: "All pending or inprogress tasks fetched successfully",
+                data: tasks,
+                count: tasks.length
+            });
+        };
+
+        const [tasks] = await pool.execute(`
+                SELECT t.*, u.name as created_by_name, u.company as created_by_company
+                FROM tasks t
+                JOIN users u ON t.created_by = u.id
+                WHERE (t.status = 'Pending' OR t.status ='InProgress') AND t.created_by = ?
+                ORDER BY t.created_on DESC
+            `, [id]);
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No pending tasks found for this user. Check if your tasks are assigned to someone or not."
+            })
+        }
+
+        return res.json({
+            success: true,
+            message: "Pending or InProgress tasks by this user fetched successfully",
+            data: tasks,
+            count: tasks.length
+        });
+        
+    } catch (error) {
+        console.error('Error fetching pending tasks:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// get all the completed tasks
+export const getCompletedTasks = async (req, res) => {
+    try {
+        const { role, id } = req.user;
+        const pool = await getPool();
+
+        if (role === 'SuperAdmin') {
+            const [tasks] = await pool.execute(`
+                SELECT t.*, u.name as created_by_name, u.company as created_by_company
+                FROM tasks t
+                JOIN users u ON t.created_by = u.id
+                WHERE t.status = 'Completed'
+                ORDER BY t.created_on DESC
+            `);
+
+            return res.json({
+                success: true,
+                message: "All completed tasks fetched successfully",
+                data: tasks,
+                count: tasks.length
+            });
+        };
+
+        const [tasks] = await pool.execute(`
+                SELECT t.*, u.name as created_by_name, u.company as created_by_company
+                FROM tasks t
+                JOIN users u ON t.created_by = u.id
+                WHERE (t.status = 'Completed') AND t.created_by = ?
+                ORDER BY t.created_on DESC
+            `, [id]);
+
+        if (tasks.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No completed tasks found for this user."
+            })
+        }
+
+        return res.json({
+            success: true,
+            message: "Completed tasks by this user fetched successfully",
+            data: tasks,
+            count: tasks.length
+        });
+        
+    } catch (error) {
+        console.error('Error fetching completed tasks:', error);
         res.status(500).json({
             success: false,
             message: 'Internal server error'
