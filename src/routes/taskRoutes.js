@@ -1,7 +1,8 @@
 import express from "express";
 import { 
     createTask, 
-    getTasks, 
+    getTasks,
+    getMyCreatedTasks, 
     getTaskById, 
     updateTask, 
     deleteTask, 
@@ -18,6 +19,7 @@ const router = express.Router();
 // Task routes
 router.post("/create-task", verifyJWT, authorize(['SuperAdmin', 'CompanyUser', 'EndUser']), createTask);
 router.get("/get-tasks", verifyJWT, authorize([]), getTasks);
+router.get("/get-my-created-tasks", verifyJWT, authorize([]), getMyCreatedTasks);
 router.get("/get-task/:id", verifyJWT, authorize([]), getTaskById);
 router.patch("/update-task/:id", verifyJWT, authorize([]), updateTask);
 router.delete("/delete-task/:id", verifyJWT, authorize([]), deleteTask);
