@@ -20,8 +20,8 @@ Before running the project, ensure the following are installed:
 ## Installation
 1. **Clone the Repository**:
    ```bash
-   git clone <your-repository-url>
-   cd task-management-system
+   git clone https://github.com/haseeb-505/task_management_system.git
+   cd task_management_system
    ```
 
 2. **Install Dependencies**:
@@ -53,34 +53,40 @@ Before running the project, ensure the following are installed:
    Replace `your_mysql_password` with your MySQL password and `your_super_secret_jwt_key_here` with a strong JWT secret.
 
 4. **Database Setup**:
-   - **Option A: Manual Database Creation**:
-     Log in to MySQL:
-     ```bash
-     mysql -u root -p
-     ```
-     Create the database:
-     ```sql
-     CREATE DATABASE task_management_db;
-     EXIT;
-     ```
-   - **Option B: Automatic Setup (Recommended)**:
-     The seeding script will automatically create the database if it doesn't exist.
 
-5. **Run the Seeding Script**:
-   Run the following command to create the database, tables, and seed with test data:
-   ```bash
-   npm run seed
+   - **Schema & Models**:  
+     The database schema is defined in the `models/schema.sql` file.  
+
+   - **DB Connection**:  
+     Connection pooling is configured in `config/db.js`.  
+
+   - **Initialization**:  
+     To initialize the database and create required tables, run:  
+     ```bash
+     node src/config/initDB.js
+     ```
+
+   - **Seeding Test Data** (Optional):  
+     To insert sample users, tasks, and files for testing, run:  
+     ```bash
+     node scripts/seedTestData.js
+     ```
+     Or run the following command (this command was used in this project):
+     ```bash
+      npm run seed
+    ```
+     ⚠️ This script is for local development only. 
+     If you want to delete any all the records from existing tables, un comment the `TRUNCATE` statements in file `task_management_system/scripts/seedTestData.js`.
+     ```javascript
+    // Comment these lines after first run:
+    // await pool.execute('TRUNCATE TABLE task_files;');
+    // await pool.execute('TRUNCATE TABLE tasks;');
+    // await pool.execute('TRUNCATE TABLE users;');
    ```
-   **⚠️ Important**: After the first run, open `scripts/seedTestData.js` and comment out or remove the `TRUNCATE TABLE` lines to prevent accidental data loss in subsequent runs:
-   ```javascript
-   // Comment these lines after first run:
-   // await pool.execute('TRUNCATE TABLE task_files;');
-   // await pool.execute('TRUNCATE TABLE tasks;');
-   // await pool.execute('TRUNCATE TABLE users;');
-   ```
+    **⚠️ Important**: After first run, you may want to comment out or remove any `TRUNCATE` statements inside `seedTestData.js` to prevent accidental data loss.
 
 6. **Start the Server**:
-   - Development mode with auto-restart:
+   - Development mode with auto-restart using `nodemon`:
      ```bash
      npm run dev
      ```
@@ -127,14 +133,14 @@ Authorization: Bearer <your_jwt_token>
   - Can create and update tasks for their company
 - **EndUser**:
   - Access to tasks within their company only
-  - Can create and update tasks
-  - Cannot be assigned tasks (SuperAdmin or CompanyUser must assign tasks via endpoint)
+  - Can create and update tasks, update title, description, due_date only
+  - Cannot assign tasks (SuperAdmin or CompanyUser must assign tasks via endpoint)
 
 ## Database Schema
 - **Users Table**:
   - Columns: `id`, `name`, `email`, `password`, `role`, `company`, `created_on`
 - **Tasks Table**:
-  - Columns: `id`, `title`, `description`, `due_date`, `status`, `created_by`, `assigned_to`, `created_on`
+  - Columns: `id`, `title`, `description`, `due_date`, `status`, `created_by`, `assigned_to`, `created_on`, `assigned_on`, `completed_on`
 - **Task Files Table**:
   - Columns: `id`, `task_id`, `filename`, `file_path`, `uploaded_by`, `uploaded_at`
 
@@ -143,16 +149,13 @@ File uploads are stored in the `uploads/` directory with the following structure
 ```
 uploads/
   tasks/
-    task_123/
-      file1.pdf
-      file2.jpg
+    files here
 ```
 
 ## Scripts
 - `npm start` - Start the server in production mode
 - `npm run dev` - Start in development mode with nodemon
 - `npm run seed` - Run the database seeding script
-- `npm test` - Run tests (if available)
 
 ## Troubleshooting
 ### Common Issues
