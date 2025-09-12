@@ -160,7 +160,7 @@ Authorization: Bearer <your_jwt_token>
 #### Task Assignment (SuperAdmin Only)
 - `GET /task-assignment/unassigned` → Get all unassigned tasks
 - `GET /task-assignment/company-users` → Get all company users
-- `PATCH /task-assignment/:taskId/assign` → Assign a task to a user
+- `PATCH /task-assignment/:id/assign` → Assign a task to a user
 
 
 ## Role Permissions
